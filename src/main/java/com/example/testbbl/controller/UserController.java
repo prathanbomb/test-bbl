@@ -40,7 +40,7 @@ class UserController {
     public Mono<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
         return userService.createUser(request)
                 .map(user -> ApiResponse.<UserResponse>builder()
-                        .status(201)
+                        .status(HttpStatus.CREATED.value())
                         .message("User created successfully")
                         .data(user)
                         .build());
@@ -56,7 +56,7 @@ class UserController {
     public Mono<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         return userService.deleteUser(id)
                 .then(Mono.just(ApiResponse.<Void>builder()
-                        .status(204)
+                        .status(HttpStatus.NO_CONTENT.value())
                         .message("User deleted successfully")
                         .build()));
     }
