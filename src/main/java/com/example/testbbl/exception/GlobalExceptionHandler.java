@@ -1,5 +1,6 @@
 package com.example.testbbl.exception;
 
+import com.example.testbbl.dto.ApiResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,62 +20,54 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private Map<String, Object> errorBody(HttpStatus status, String message, String path) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", Instant.now().toString());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        body.put("path", path);
-        return body;
-    }
-
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleUserNotFoundException(UserNotFoundException ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(UserNotFoundException ex, ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.NOT_FOUND;
-        return new ResponseEntity<>(errorBody(status, ex.getMessage(), exchange.getRequest().getPath().value()), status);
+        ApiResponse<Void> response = ApiResponse.error(status.value(), ex.getMessage());
+        return new ResponseEntity<>(response, status);
     }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handleEmailExistsException(EmailAlreadyExistsException ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiResponse<Void>> handleEmailExistsException(EmailAlreadyExistsException ex, ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.CONFLICT;
-        return new ResponseEntity<>(errorBody(status, ex.getMessage(), exchange.getRequest().getPath().value()), status);
+        ApiResponse<Void> response = ApiResponse.error(status.value(), ex.getMessage());
+        return new ResponseEntity<>(response, status);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex, ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         List<Map<String, String>> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
                 .map(this::toFieldError)
                 .collect(Collectors.toList());
-        Map<String, Object> body = errorBody(status, "Validation failed", exchange.getRequest().getPath().value());
-        body.put("errors", fieldErrors);
-        return new ResponseEntity<>(body, status);
+        ApiResponse<Void> response = ApiResponse.error(status.value(), "Validation failure", fieldErrors);
+        return new ResponseEntity<>(response, status);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex, ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         List<Map<String, String>> violations = ex.getConstraintViolations().stream()
                 .map(this::toViolation)
                 .collect(Collectors.toList());
-        Map<String, Object> body = errorBody(status, "Constraint violation", exchange.getRequest().getPath().value());
-        body.put("errors", violations);
-        return new ResponseEntity<>(body, status);
+        ApiResponse<Void> response = ApiResponse.error(status.value(), "Constraint violation", violations);
+        return new ResponseEntity<>(response, status);
     }
 
     @ExceptionHandler(ServerWebInputException.class)
-    public ResponseEntity<Map<String, Object>> handleServerWebInput(ServerWebInputException ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiResponse<Void>> handleServerWebInput(ServerWebInputException ex, ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        return new ResponseEntity<>(errorBody(status, ex.getReason(), exchange.getRequest().getPath().value()), status);
+        ApiResponse<Void> response = ApiResponse.error(status.value(), ex.getReason());
+        return new ResponseEntity<>(response, status);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex, ServerWebExchange exchange) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return new ResponseEntity<>(errorBody(status, ex.getMessage(), exchange.getRequest().getPath().value()), status);
+        ApiResponse<Void> response = ApiResponse.error(status.value(), ex.getMessage());
+        return new ResponseEntity<>(response, status);
     }
 
     private Map<String, String> toFieldError(FieldError error) {

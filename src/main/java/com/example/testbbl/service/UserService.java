@@ -1,5 +1,7 @@
 package com.example.testbbl.service;
 
+import com.example.testbbl.dto.PagedResult;
+import com.example.testbbl.dto.PaginationInfo;
 import com.example.testbbl.dto.UserDto;
 import com.example.testbbl.exception.EmailAlreadyExistsException;
 import com.example.testbbl.exception.UserNotFoundException;
@@ -13,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +34,20 @@ public class UserService {
                 .skip(skip)
                 .take(pageable.getPageSize())
                 .map(userMapper::toDto);
+    }
+
+    public Mono<PagedResult<UserDto>> getAllUsersWithPagination(int page, int size) {
+        int safeSize = Math.max(1, size);
+        int safePage = Math.max(0, page);
+        
+        return userRepository.count()
+                .flatMap(totalElements -> {
+                    PaginationInfo pagination = PaginationInfo.of(safePage, safeSize, totalElements);
+                    
+                    return getAllUsers(safePage, safeSize)
+                            .collectList()
+                            .map(users -> new PagedResult<>(users, pagination));
+                });
     }
 
     public Mono<UserDto> getUserById(Long id) {
