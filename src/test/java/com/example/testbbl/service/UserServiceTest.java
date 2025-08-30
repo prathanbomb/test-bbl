@@ -1,6 +1,7 @@
 package com.example.testbbl.service;
 
-import com.example.testbbl.dto.UserDto;
+import com.example.testbbl.dto.request.CreateUserRequest;
+import com.example.testbbl.dto.response.UserResponse;
 import com.example.testbbl.exception.EmailAlreadyExistsException;
 import com.example.testbbl.exception.UserNotFoundException;
 import com.example.testbbl.mapper.UserMapper;
@@ -36,17 +37,17 @@ class UserServiceTest {
     @Test
     void getUserById_whenFound_returnsDto() {
         User user = new User(1L, "Name", "username", "email@example.com", null, null);
-        UserDto dto = new UserDto(1L, "Name", "username", "email@example.com", null, null);
+        UserResponse response = new UserResponse(1L, "Name", "username", "email@example.com", null, null);
 
         when(userRepository.findById(1L)).thenReturn(Mono.just(user));
-        when(userMapper.toDto(user)).thenReturn(dto);
+        when(userMapper.toResponse(user)).thenReturn(response);
 
         StepVerifier.create(userService.getUserById(1L))
-                .expectNext(dto)
+                .expectNext(response)
                 .verifyComplete();
 
         verify(userRepository).findById(1L);
-        verify(userMapper).toDto(user);
+        verify(userMapper).toResponse(user);
     }
 
     @Test
@@ -65,7 +66,7 @@ class UserServiceTest {
 
     @Test
     void createUser_whenEmailExists_errorsWithConflict() {
-        UserDto input = new UserDto(null, "Name", "username", "exists@example.com", null, null);
+        CreateUserRequest input = new CreateUserRequest("Name", "username", "exists@example.com", null, null);
         when(userRepository.existsByEmailIgnoreCase("exists@example.com")).thenReturn(Mono.just(true));
 
         StepVerifier.create(userService.createUser(input))
@@ -81,15 +82,15 @@ class UserServiceTest {
 
     @Test
     void createUser_whenValid_savesAndReturnsDto() {
-        UserDto input = new UserDto(null, "Name", "username", "new@example.com", null, null);
+        CreateUserRequest input = new CreateUserRequest("Name", "username", "new@example.com", null, null);
         User toSave = new User(null, "Name", "username", "new@example.com", null, null);
         User saved = new User(10L, "Name", "username", "new@example.com", null, null);
-        UserDto output = new UserDto(10L, "Name", "username", "new@example.com", null, null);
+        UserResponse output = new UserResponse(10L, "Name", "username", "new@example.com", null, null);
 
         when(userRepository.existsByEmailIgnoreCase("new@example.com")).thenReturn(Mono.just(false));
         when(userMapper.toEntity(input)).thenReturn(toSave);
         when(userRepository.save(toSave)).thenReturn(Mono.just(saved));
-        when(userMapper.toDto(saved)).thenReturn(output);
+        when(userMapper.toResponse(saved)).thenReturn(output);
 
         StepVerifier.create(userService.createUser(input))
                 .expectNext(output)
@@ -98,7 +99,7 @@ class UserServiceTest {
         verify(userRepository).existsByEmailIgnoreCase("new@example.com");
         verify(userMapper).toEntity(input);
         verify(userRepository).save(toSave);
-        verify(userMapper).toDto(saved);
+        verify(userMapper).toResponse(saved);
     }
 
     @Test

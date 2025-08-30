@@ -2,7 +2,9 @@ package com.example.testbbl.service;
 
 import com.example.testbbl.dto.PagedResult;
 import com.example.testbbl.dto.PaginationInfo;
-import com.example.testbbl.dto.UserDto;
+import com.example.testbbl.dto.request.CreateUserRequest;
+import com.example.testbbl.dto.request.UpdateUserRequest;
+import com.example.testbbl.dto.response.UserResponse;
 import com.example.testbbl.exception.EmailAlreadyExistsException;
 import com.example.testbbl.exception.UserNotFoundException;
 import com.example.testbbl.model.User;
@@ -25,7 +27,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final com.example.testbbl.mapper.UserMapper userMapper;
 
-    public Flux<UserDto> getAllUsers(int page, int size) {
+    public Flux<UserResponse> getAllUsers(int page, int size) {
         int safeSize = Math.max(1, size);
         int safePage = Math.max(0, page);
         Pageable pageable = PageRequest.of(safePage, safeSize);
@@ -33,10 +35,10 @@ public class UserService {
         return userRepository.findAll()
                 .skip(skip)
                 .take(pageable.getPageSize())
-                .map(userMapper::toDto);
+                .map(userMapper::toResponse);
     }
 
-    public Mono<PagedResult<UserDto>> getAllUsersWithPagination(int page, int size) {
+    public Mono<PagedResult<UserResponse>> getAllUsersWithPagination(int page, int size) {
         int safeSize = Math.max(1, size);
         int safePage = Math.max(0, page);
         
@@ -50,32 +52,32 @@ public class UserService {
                 });
     }
 
-    public Mono<UserDto> getUserById(Long id) {
+    public Mono<UserResponse> getUserById(Long id) {
         return userRepository.findById(id)
-                .map(userMapper::toDto)
+                .map(userMapper::toResponse)
                 .switchIfEmpty(Mono.error(new UserNotFoundException("User not found with id: " + id)));
     }
 
-    public Mono<UserDto> createUser(UserDto userDto) {
-        return userRepository.existsByEmailIgnoreCase(userDto.getEmail())
+    public Mono<UserResponse> createUser(CreateUserRequest request) {
+        return userRepository.existsByEmailIgnoreCase(request.getEmail())
                 .flatMap(exists -> {
                     if (exists) {
-                        return Mono.<User>error(new EmailAlreadyExistsException("Email already exists: " + userDto.getEmail()));
+                        return Mono.<User>error(new EmailAlreadyExistsException("Email already exists: " + request.getEmail()));
                     }
-                    User entity = userMapper.toEntity(userDto);
+                    User entity = userMapper.toEntity(request);
                     entity.setId(null); // ensure new entity
                     return userRepository.save(entity);
                 })
-                .map(userMapper::toDto)
+                .map(userMapper::toResponse)
                 .onErrorMap(err -> (err instanceof DuplicateKeyException || err instanceof DataIntegrityViolationException),
-                        err -> new EmailAlreadyExistsException("Email already exists: " + userDto.getEmail()));
+                        err -> new EmailAlreadyExistsException("Email already exists: " + request.getEmail()));
     }
 
-    public Mono<UserDto> updateUser(Long id, UserDto userDto) {
+    public Mono<UserResponse> updateUser(Long id, UpdateUserRequest request) {
         return userRepository.findById(id)
                 .switchIfEmpty(Mono.error(new UserNotFoundException("User not found with id: " + id)))
                 .flatMap(existing -> {
-                    String newEmail = userDto.getEmail();
+                    String newEmail = request.getEmail();
                     if (newEmail != null && !newEmail.equalsIgnoreCase(existing.getEmail())) {
                         return userRepository.findByEmailIgnoreCase(newEmail)
                                 .flatMap(found -> !found.getId().equals(id)
@@ -83,17 +85,17 @@ public class UserService {
                                         : Mono.just(existing))
                                 .switchIfEmpty(Mono.just(existing))
                                 .flatMap(user -> {
-                                    userMapper.updateEntityFromDto(userDto, user);
+                                    userMapper.updateEntityFromRequest(request, user);
                                     return userRepository.save(user);
                                 });
                     } else {
-                        userMapper.updateEntityFromDto(userDto, existing);
+                        userMapper.updateEntityFromRequest(request, existing);
                         return userRepository.save(existing);
                     }
                 })
-                .map(userMapper::toDto)
+                .map(userMapper::toResponse)
                 .onErrorMap(err -> (err instanceof DuplicateKeyException || err instanceof DataIntegrityViolationException),
-                        err -> new EmailAlreadyExistsException("Email already exists: " + userDto.getEmail()));
+                        err -> new EmailAlreadyExistsException("Email already exists: " + request.getEmail()));
     }
 
     public Mono<Void> deleteUser(Long id) {

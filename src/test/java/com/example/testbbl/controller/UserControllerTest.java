@@ -2,7 +2,8 @@ package com.example.testbbl.controller;
 
 import com.example.testbbl.dto.PagedResult;
 import com.example.testbbl.dto.PaginationInfo;
-import com.example.testbbl.dto.UserDto;
+import com.example.testbbl.dto.request.CreateUserRequest;
+import com.example.testbbl.dto.response.UserResponse;
 import com.example.testbbl.exception.EmailAlreadyExistsException;
 import com.example.testbbl.exception.GlobalExceptionHandler;
 import com.example.testbbl.exception.UserNotFoundException;
@@ -34,8 +35,8 @@ class UserControllerTest {
 
     @Test
     void getUserById_returnsOk() {
-        UserDto dto = new UserDto(1L, "Name", "username", "email@example.com", null, null);
-        given(userService.getUserById(1L)).willReturn(Mono.just(dto));
+        UserResponse response = new UserResponse(1L, "Name", "username", "email@example.com", null, null);
+        given(userService.getUserById(1L)).willReturn(Mono.just(response));
 
         webTestClient.get()
                 .uri("/users/{id}", 1)
@@ -64,8 +65,8 @@ class UserControllerTest {
 
     @Test
     void createUser_returns201() {
-        UserDto output = new UserDto(10L, "Name", "username", "new@example.com", null, null);
-        given(userService.createUser(any(UserDto.class))).willReturn(Mono.just(output));
+        UserResponse output = new UserResponse(10L, "Name", "username", "new@example.com", null, null);
+        given(userService.createUser(any(CreateUserRequest.class))).willReturn(Mono.just(output));
 
         String body = "{" +
                 "\"name\":\"Name\"," +
@@ -88,7 +89,7 @@ class UserControllerTest {
 
     @Test
     void createUser_whenEmailExists_returns409WithErrorBody() {
-        given(userService.createUser(any(UserDto.class)))
+        given(userService.createUser(any(CreateUserRequest.class)))
                 .willReturn(Mono.error(new EmailAlreadyExistsException("Email already exists: new@example.com")));
 
         String body = "{" +
@@ -126,11 +127,11 @@ class UserControllerTest {
 
     @Test
     void getAllUsers_returnsPagedUsers() {
-        UserDto user1 = new UserDto(1L, "User1", "user1", "user1@example.com", null, null);
-        UserDto user2 = new UserDto(2L, "User2", "user2", "user2@example.com", null, null);
-        List<UserDto> users = List.of(user1, user2);
+        UserResponse user1 = new UserResponse(1L, "User1", "user1", "user1@example.com", null, null);
+        UserResponse user2 = new UserResponse(2L, "User2", "user2", "user2@example.com", null, null);
+        List<UserResponse> users = List.of(user1, user2);
         PaginationInfo pagination = PaginationInfo.of(0, 10, 2L);
-        PagedResult<UserDto> pagedResult = new PagedResult<>(users, pagination);
+        PagedResult<UserResponse> pagedResult = new PagedResult<>(users, pagination);
         
         given(userService.getAllUsersWithPagination(0, 10)).willReturn(Mono.just(pagedResult));
 
